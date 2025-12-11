@@ -36,6 +36,8 @@ let currentCity = null;
 document.addEventListener('DOMContentLoaded', () => {
     updateNotifyButton();
     registerServiceWorker();
+    elements.searchBtn.addEventListener('click', handleSearch);
+
 });
 
 // ===== Service Worker =====

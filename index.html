@@ -3,21 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Météo PWA</title>
 
-    <!-- Manifest PWA -->
+    <!-- Manifest -->
     <link rel="manifest" href="manifest.json">
-
-    <!-- Couleur de la barre d'adresse -->
     <meta name="theme-color" content="#1e88e5">
 
-    <!-- Icons -->
-    <link rel="icon" href="icons/icon-96.png">
-
-    <title>Ma PWA Simple</title>
+    <!-- Styles minimal -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f4f8;
+            color: #333;
+        }
+        header {
+            background-color: #1e88e5;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        main {
+            padding: 1rem;
+        }
+        #city-input {
+            width: 70%;
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+        #search-btn {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            margin-left: 0.5rem;
+            cursor: pointer;
+        }
+        #loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        .hidden {
+            display: none;
+        }
+        #weather-section {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .weather-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .weather-details {
+            margin-top: 1rem;
+        }
+        #hourly-list {
+            display: flex;
+            margin-top: 1rem;
+            gap: 1rem;
+            overflow-x: auto;
+        }
+        .hourly-item {
+            background-color: #e3f2fd;
+            padding: 0.5rem;
+            border-radius: 6px;
+            text-align: center;
+            min-width: 60px;
+        }
+        .rain-alert { background-color: #90caf9; }
+        .temp-alert { background-color: #ffcc80; }
+        #error-message {
+            color: red;
+            margin-top: 1rem;
+        }
+    </style>
 </head>
 <body>
-    <h1>Meteo 👋</h1>
-    <p>Si tu vois ce texte, la page fonctionne.</p>
+    <header>
+        <h1>Météo PWA</h1>
+        <input type="text" id="city-input" placeholder="Entrez une ville">
+        <button id="search-btn">Rechercher</button>
+    </header>
+
+    <main>
+        <div id="loading">⏳ Chargement...</div>
+        <div id="error-message" class="hidden"></div>
+
+        <section id="weather-section" class="hidden">
+            <div class="weather-main">
+                <h2 id="city-name"></h2>
+                <div id="weather-icon" style="font-size:2rem;"></div>
+                <div id="temperature" style="font-size:2rem;"></div>
+            </div>
+            <div class="weather-details">
+                <p>Vent : <span id="wind"></span></p>
+                <p>Humidité : <span id="humidity"></span></p>
+                <p>Ressenti : <span id="feels-like"></span></p>
+            </div>
+
+            <h3>Prochaines heures</h3>
+            <div id="hourly-list"></div>
+        </section>
+    </main>
 
     <script src="app.js"></script>
 </body>
