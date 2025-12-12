@@ -3,111 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Météo PWA</title>
+    <title>MétéoPWA - Prévisions en temps réel</title>
 
     <!-- Manifest -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1e88e5">
-
-    <!-- Styles minimal -->
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f4f8;
-            color: #333;
-        }
-        header {
-            background-color: #1e88e5;
-            color: white;
-            padding: 1rem;
-            text-align: center;
-        }
-        main {
-            padding: 1rem;
-        }
-        #city-input {
-            width: 70%;
-            padding: 0.5rem;
-            font-size: 1rem;
-        }
-        #search-btn {
-            padding: 0.5rem 1rem;
-            font-size: 1rem;
-            margin-left: 0.5rem;
-            cursor: pointer;
-        }
-        #loading {
-            display: none;
-            text-align: center;
-            margin: 1rem 0;
-        }
-        .hidden {
-            display: none;
-        }
-        #weather-section {
-            margin-top: 1rem;
-            padding: 1rem;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
-        .weather-main {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .weather-details {
-            margin-top: 1rem;
-        }
-        #hourly-list {
-            display: flex;
-            margin-top: 1rem;
-            gap: 1rem;
-            overflow-x: auto;
-        }
-        .hourly-item {
-            background-color: #e3f2fd;
-            padding: 0.5rem;
-            border-radius: 6px;
-            text-align: center;
-            min-width: 60px;
-        }
-        .rain-alert { background-color: #90caf9; }
-        .temp-alert { background-color: #ffcc80; }
-        #error-message {
-            color: red;
-            margin-top: 1rem;
-        }
-    </style>
+    <meta name="theme-color" content="#6366f1">
+    
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <h1>Météo PWA</h1>
-        <input type="text" id="city-input" placeholder="Entrez une ville">
-        <button id="search-btn">Rechercher</button>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">
+                <span class="logo-icon">🌤️</span>
+                MétéoPWA
+            </h1>
+            <button id="notify-btn" class="notify-btn">
+                🔔 Notifications
+            </button>
+        </div>
     </header>
 
-    <main>
-        <div id="loading">⏳ Chargement...</div>
-        <div id="error-message" class="hidden"></div>
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Search Section -->
+            <section class="search-section">
+                <div class="search-bar">
+                    <input 
+                        type="text" 
+                        id="city-input" 
+                        class="search-input" 
+                        placeholder="Rechercher une ville..."
+                        autocomplete="off"
+                    >
+                    <button id="search-btn" class="search-btn">
+                        <span class="search-icon">🔍</span>
+                        Rechercher
+                    </button>
+                </div>
+            </section>
 
-        <section id="weather-section" class="hidden">
-            <div class="weather-main">
-                <h2 id="city-name"></h2>
-                <div id="weather-icon" style="font-size:2rem;"></div>
-                <div id="temperature" style="font-size:2rem;"></div>
-            </div>
-            <div class="weather-details">
-                <p>Vent : <span id="wind"></span></p>
-                <p>Humidité : <span id="humidity"></span></p>
-                <p>Ressenti : <span id="feels-like"></span></p>
+            <!-- Loading State -->
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Chargement des données météo...</p>
             </div>
 
-            <h3>Prochaines heures</h3>
-            <div id="hourly-list"></div>
-        </section>
+            <!-- Error Message -->
+            <div id="error-message" class="error-message hidden"></div>
+
+            <!-- Weather Display -->
+            <section id="weather-section" class="weather-section hidden">
+                <!-- Current Weather Card -->
+                <div class="weather-card">
+                    <div class="weather-header">
+                        <h2 id="city-name" class="city-name"></h2>
+                        <p class="update-time">Mis à jour maintenant</p>
+                    </div>
+
+                    <div class="weather-current">
+                        <div class="weather-main">
+                            <div class="weather-icon-large" id="weather-icon"></div>
+                            <div class="temperature-display">
+                                <span id="temperature" class="temperature"></span>
+                                <span class="temperature-unit">°C</span>
+                            </div>
+                        </div>
+
+                        <div class="weather-details">
+                            <div class="detail-item">
+                                <span class="detail-icon">💨</span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Vent</span>
+                                    <span id="wind" class="detail-value"></span>
+                                </div>
+                            </div>
+
+                            <div class="detail-item">
+                                <span class="detail-icon">💧</span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Humidité</span>
+                                    <span id="humidity" class="detail-value"></span>
+                                </div>
+                            </div>
+
+                            <div class="detail-item">
+                                <span class="detail-icon">🌡️</span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Ressenti</span>
+                                    <span id="feels-like" class="detail-value"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="forecast-card">
+                    <h3 class="forecast-title">Prévisions des prochaines heures</h3>
+                    <div id="hourly-list" class="hourly-list"></div>
+                </div>
+            </section>
+        </div>
     </main>
 
     <script src="app.js"></script>

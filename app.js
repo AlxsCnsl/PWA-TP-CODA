@@ -36,8 +36,14 @@ let currentCity = null;
 document.addEventListener('DOMContentLoaded', () => {
     updateNotifyButton();
     registerServiceWorker();
+    
     elements.searchBtn.addEventListener('click', handleSearch);
+    
+    elements.notifyBtn.addEventListener('click', requestNotificationPermission);
 
+    elements.cityInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSearch();
+    });
 });
 
 // ===== Service Worker =====
@@ -58,14 +64,9 @@ function isNotificationSupported() {
 }
 
 function updateNotifyButton() {
+    // ✅ SIMPLIFICATION : Une seule vérification
     if (!isNotificationSupported()) {
-        elements.notifyBtn.textContent = '🔔 Non disponible (iOS)';
-        elements.notifyBtn.disabled = true;
-        return;
-    }
-    
-    if (!('Notification' in window)) {
-        elements.notifyBtn.textContent = '🔔 Notifications non supportées';
+        elements.notifyBtn.textContent = '🔔 Non disponible';
         elements.notifyBtn.disabled = true;
         return;
     }
@@ -87,7 +88,7 @@ function updateNotifyButton() {
 }
 
 async function requestNotificationPermission() {
-    if (!('Notification' in window)) {
+    if (!isNotificationSupported()) {
         showError('Les notifications ne sont pas supportées par votre navigateur.');
         return;
     }
@@ -111,12 +112,40 @@ async function requestNotificationPermission() {
         }
     } catch (error) {
         console.error('Erreur lors de la demande de permission:', error);
+        showError('Erreur lors de l\'activation des notifications.');
     }
 }
 
 function sendWeatherNotification(city, message, type = 'info') {
-  
+    // Vérifier que les notifications sont disponibles et autorisées
+    if (!isNotificationSupported() || Notification.permission !== 'granted') {
+        console.log('Notifications non disponibles ou non autorisées');
+        return;
+    }
+
+    // Choisir l'icône selon le type
+    const icons = {
+        rain: '🌧️',
+        temp: '🌡️',
+        info: 'ℹ️'
+    };
+
+    // Créer la notification
+    const notification = new Notification(`${icons[type]} ${city}`, {
+        body: message,
+        icon: 'icons/icon-192.png',
+        badge: 'icons/icon-96.png',
+        tag: `weather-${type}`, // Évite les doublons
+        requireInteraction: false, // Se ferme automatiquement
+        silent: false
+    });
+
+    // Optionnel : fermer automatiquement après 10 secondes
+    setTimeout(() => notification.close(), 10000);
+
+    console.log(`📬 Notification envoyée: ${message}`);
 }
+
 // ===== Recherche et API Météo =====
 async function handleSearch() {
     const query = elements.cityInput.value.trim();
