@@ -31,6 +31,7 @@ const elements = {
 
 // ===== État de l'application =====
 let currentCity = null;
+let swRegistration = null; // ✅ AJOUT : Stocker l'enregistrement du SW
 
 // ===== Initialisation =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -38,9 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
     registerServiceWorker();
     
     elements.searchBtn.addEventListener('click', handleSearch);
-    
     elements.notifyBtn.addEventListener('click', requestNotificationPermission);
-
+    
     elements.cityInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleSearch();
     });
@@ -50,8 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
 async function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         try {
-            const registration = await navigator.serviceWorker.register('./service-worker.js');
-            console.log('✅ Service Worker enregistré:', registration.scope);
+            swRegistration = await navigator.serviceWorker.register('./service-worker.js');
+            console.log('✅ Service Worker enregistré:', swRegistration.scope);
+            
+            // ✅ Attendre que le SW soit actif
+            await navigator.serviceWorker.ready;
+            console.log('✅ Service Worker prêt');
         } catch (error) {
             console.error('❌ Erreur Service Worker:', error);
         }
@@ -60,11 +64,10 @@ async function registerServiceWorker() {
 
 // ===== Notifications =====
 function isNotificationSupported() {
-    return 'Notification' in window && typeof Notification !== 'undefined';
+    return 'Notification' in window && 'serviceWorker' in navigator;
 }
 
 function updateNotifyButton() {
-    // ✅ SIMPLIFICATION : Une seule vérification
     if (!isNotificationSupported()) {
         elements.notifyBtn.textContent = '🔔 Non disponible';
         elements.notifyBtn.disabled = true;
@@ -103,12 +106,12 @@ async function requestNotificationPermission() {
         updateNotifyButton();
         
         if (permission === 'granted') {
-            // Notification de test
-            new Notification('MétéoPWA', {
-                body: 'Les notifications sont maintenant activées ! 🎉',
-                icon: 'icons/icon-192.png',
-                tag: 'welcome'
-            });
+            // ✅ Notification de test via Service Worker
+            await sendNotification(
+                'MétéoPWA',
+                'Les notifications sont maintenant activées ! 🎉',
+                'info'
+            );
         }
     } catch (error) {
         console.error('Erreur lors de la demande de permission:', error);
@@ -116,34 +119,64 @@ async function requestNotificationPermission() {
     }
 }
 
-function sendWeatherNotification(city, message, type = 'info') {
-    // Vérifier que les notifications sont disponibles et autorisées
+// ✅ NOUVELLE FONCTION : Envoi unifié de notifications
+async function sendNotification(title, body, tag = 'default') {
     if (!isNotificationSupported() || Notification.permission !== 'granted') {
         console.log('Notifications non disponibles ou non autorisées');
         return;
     }
 
-    // Choisir l'icône selon le type
+    try {
+        // Attendre que le SW soit prêt
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Options de notification
+        const options = {
+            body: body,
+            icon: 'icons/icon-192.png',
+            badge: 'icons/icon-96.png',
+            tag: tag,
+            requireInteraction: false,
+            vibrate: [200, 100, 200],
+            data: {
+                dateOfArrival: Date.now(),
+                primaryKey: tag
+            }
+        };
+
+        // ✅ Utiliser showNotification du Service Worker
+        await registration.showNotification(title, options);
+        console.log(`📬 Notification envoyée: ${title} - ${body}`);
+        
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'envoi de la notification:', error);
+        
+        // ✅ FALLBACK : Sur desktop, utiliser le constructeur classique
+        if (!navigator.userAgent.match(/Android|iPhone|iPad/i)) {
+            try {
+                new Notification(title, {
+                    body: body,
+                    icon: 'icons/icon-192.png',
+                    tag: tag
+                });
+                console.log('📬 Notification desktop envoyée (fallback)');
+            } catch (e) {
+                console.error('❌ Fallback échoué:', e);
+            }
+        }
+    }
+}
+
+// ✅ FONCTION SIMPLIFIÉE
+async function sendWeatherNotification(city, message, type = 'info') {
     const icons = {
         rain: '🌧️',
         temp: '🌡️',
         info: 'ℹ️'
     };
-
-    // Créer la notification
-    const notification = new Notification(`${icons[type]} ${city}`, {
-        body: message,
-        icon: 'icons/icon-192.png',
-        badge: 'icons/icon-96.png',
-        tag: `weather-${type}`, // Évite les doublons
-        requireInteraction: false, // Se ferme automatiquement
-        silent: false
-    });
-
-    // Optionnel : fermer automatiquement après 10 secondes
-    setTimeout(() => notification.close(), 10000);
-
-    console.log(`📬 Notification envoyée: ${message}`);
+    
+    const title = `${icons[type]} ${city}`;
+    await sendNotification(title, message, `weather-${type}`);
 }
 
 // ===== Recherche et API Météo =====
@@ -159,7 +192,6 @@ async function handleSearch() {
     hideError();
 
     try {
-        // 1. Géocodage : trouver les coordonnées de la ville
         const geoResponse = await fetch(
             `${CONFIG.GEOCODING_API}?name=${encodeURIComponent(query)}&count=1&language=fr&format=json`
         );
@@ -175,7 +207,6 @@ async function handleSearch() {
         const location = geoData.results[0];
         const cityName = `${location.name}${location.admin1 ? ', ' + location.admin1 : ''}, ${location.country}`;
         
-        // 2. Récupérer la météo
         await fetchWeather(location.latitude, location.longitude, cityName);
         
     } catch (error) {
@@ -200,13 +231,9 @@ async function fetchWeather(lat, lon, cityName) {
 
         const weatherData = await weatherResponse.json();
         
-        // Sauvegarder la ville courante
         currentCity = { name: cityName, lat, lon };
         
-        // Afficher les résultats
         displayWeather(weatherData, cityName);
-        
-        // Vérifier les alertes pour les 4 prochaines heures
         checkWeatherAlerts(weatherData, cityName);
         
         hideLoading();
@@ -221,7 +248,6 @@ function displayWeather(data, cityName) {
     const current = data.current;
     const hourly = data.hourly;
 
-    // Données actuelles
     elements.cityName.textContent = cityName;
     elements.temperature.textContent = Math.round(current.temperature_2m);
     elements.weatherIcon.textContent = getWeatherEmoji(current.weather_code);
@@ -229,7 +255,6 @@ function displayWeather(data, cityName) {
     elements.humidity.textContent = `${current.relative_humidity_2m} %`;
     elements.feelsLike.textContent = `${Math.round(current.apparent_temperature)}°C`;
 
-    // Prévisions horaires (4 prochaines heures)
     const currentHour = new Date().getHours();
     const hourlyItems = [];
     
@@ -260,7 +285,7 @@ function displayWeather(data, cityName) {
     elements.weatherSection.classList.remove('hidden');
 }
 
-function checkWeatherAlerts(data, cityName) {
+async function checkWeatherAlerts(data, cityName) {
     const hourly = data.hourly;
     const currentHour = new Date().getHours();
     
@@ -269,20 +294,17 @@ function checkWeatherAlerts(data, cityName) {
     let rainHour = null;
     let highTemp = null;
 
-    // Vérifier les 4 prochaines heures
     for (let i = 1; i <= 4; i++) {
         const hourIndex = currentHour + i;
         if (hourIndex < hourly.time.length) {
             const code = hourly.weather_code[hourIndex];
             const temp = hourly.temperature_2m[hourIndex];
             
-            // Vérifier la pluie
             if (!rainAlert && CONFIG.RAIN_CODES.includes(code)) {
                 rainAlert = true;
                 rainHour = i;
             }
             
-            // Vérifier la température > 10°C
             if (!tempAlert && temp > CONFIG.TEMP_THRESHOLD) {
                 tempAlert = true;
                 highTemp = Math.round(temp);
@@ -290,19 +312,19 @@ function checkWeatherAlerts(data, cityName) {
         }
     }
 
-    // Envoyer les notifications
+    // ✅ Envoyer les notifications avec await
     if (rainAlert) {
-        sendWeatherNotification(
+        await sendWeatherNotification(
             cityName,
-            `🌧️ Pluie prévue dans ${rainHour} heure${rainHour > 1 ? 's' : ''} !`,
+            `Pluie prévue dans ${rainHour} heure${rainHour > 1 ? 's' : ''} !`,
             'rain'
         );
     }
 
     if (tempAlert) {
-        sendWeatherNotification(
+        await sendWeatherNotification(
             cityName,
-            `🌡️ Température supérieure à ${CONFIG.TEMP_THRESHOLD}°C prévue (${highTemp}°C)`,
+            `Température supérieure à ${CONFIG.TEMP_THRESHOLD}°C prévue (${highTemp}°C)`,
             'temp'
         );
     }
@@ -311,36 +333,15 @@ function checkWeatherAlerts(data, cityName) {
 // ===== Utilitaires =====
 function getWeatherEmoji(code) {
     const weatherEmojis = {
-        0: '☀️',      // Clear sky
-        1: '🌤️',     // Mainly clear
-        2: '⛅',      // Partly cloudy
-        3: '☁️',      // Overcast
-        45: '🌫️',    // Fog
-        48: '🌫️',    // Depositing rime fog
-        51: '🌦️',    // Light drizzle
-        53: '🌦️',    // Moderate drizzle
-        55: '🌧️',    // Dense drizzle
-        56: '🌨️',    // Light freezing drizzle
-        57: '🌨️',    // Dense freezing drizzle
-        61: '🌧️',    // Slight rain
-        63: '🌧️',    // Moderate rain
-        65: '🌧️',    // Heavy rain
-        66: '🌨️',    // Light freezing rain
-        67: '🌨️',    // Heavy freezing rain
-        71: '🌨️',    // Slight snow
-        73: '🌨️',    // Moderate snow
-        75: '❄️',     // Heavy snow
-        77: '🌨️',    // Snow grains
-        80: '🌦️',    // Slight rain showers
-        81: '🌧️',    // Moderate rain showers
-        82: '⛈️',     // Violent rain showers
-        85: '🌨️',    // Slight snow showers
-        86: '❄️',     // Heavy snow showers
-        95: '⛈️',     // Thunderstorm
-        96: '⛈️',     // Thunderstorm with slight hail
-        99: '⛈️'      // Thunderstorm with heavy hail
+        0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+        45: '🌫️', 48: '🌫️',
+        51: '🌦️', 53: '🌦️', 55: '🌧️', 56: '🌨️', 57: '🌨️',
+        61: '🌧️', 63: '🌧️', 65: '🌧️', 66: '🌨️', 67: '🌨️',
+        71: '🌨️', 73: '🌨️', 75: '❄️', 77: '🌨️',
+        80: '🌦️', 81: '🌧️', 82: '⛈️',
+        85: '🌨️', 86: '❄️',
+        95: '⛈️', 96: '⛈️', 99: '⛈️'
     };
-    
     return weatherEmojis[code] || '🌤️';
 }
 
